@@ -1,0 +1,10 @@
+services:
+  web:
+    environment:
+      PORT: ${WEB_PORT}
+    ports: !override ["127.0.0.1:${WEB_PORT}:${WEB_PORT}"]
+    healthcheck:
+      test: [CMD-SHELL, 'node -e ''fetch("http://127.0.0.1:"+process.env.PORT+"/health/ready").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))''']
+networks:
+  local:
+    internal: ${ISOLATED_NETWORK:-false}

@@ -1,0 +1,410 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  name String
+  passwordHash String
+  role String @default("buyer")
+  createdAt DateTime @default(now())
+}
+model Session {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  principal String
+  userId String?
+  csrf String
+  analytics Boolean @default(false)
+  attribution Json @default("{}")
+  source String @default("demo")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([principal])
+}
+model Grant {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  purpose String
+  scope String
+  email String
+  version Int?
+  expiresAt DateTime
+  usedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([scope,purpose])
+}
+model OrderAccess {
+  id String @id @default(cuid())
+  sessionId String
+  orderId String
+  expiresAt DateTime
+  @@unique([sessionId,orderId])
+}
+model Product {
+  id String @id
+  slug String @unique
+  name String
+  subtitle String
+  description String
+  kind String
+  category String
+  image String
+  active Boolean @default(true)
+  template Json
+  version Int @default(1)
+  variants Variant[]
+}
+model Variant {
+  id String @id
+  productId String
+  product Product @relation(fields:[productId],references:[id],onDelete:Restrict)
+  sku String @unique
+  label String
+  color String
+  size String?
+  price Int
+  cost Int
+  capacity Int
+  reserved Int @default(0)
+  allocated Int @default(0)
+  active Boolean @default(true)
+  version Int @default(1)
+}
+model Asset {
+  id String @id @default(cuid())
+  owner String
+  key String @unique
+  sha String
+  mime String
+  width Int
+  height Int
+  bytes Int
+  state String @default("ready")
+  kind String @default("source")
+  createdAt DateTime @default(now())
+  @@index([owner])
+}
+model Design {
+  id String @id @default(cuid())
+  owner String
+  variantId String
+  version Int @default(1)
+  data Json @default("{}")
+  previewId String?
+  productionId String?
+  updatedAt DateTime @updatedAt
+  revisions Revision[]
+  @@index([owner])
+}
+model Revision {
+  id String @id @default(cuid())
+  designId String
+  design Design @relation(fields:[designId],references:[id],onDelete:Restrict)
+  version Int
+  data Json
+  previewId String
+  productionId String
+  manifest Json
+  manifestHash String
+  createdAt DateTime @default(now())
+  @@unique([designId,version])
+}
+model Cart {
+  id String @id @default(cuid())
+  principal String
+  state String @default("open")
+  version Int @default(1)
+  activeAttemptId String?
+  createdAt DateTime @default(now())
+  lines CartLine[]
+  @@index([principal,state])
+}
+model CartLine {
+  id String @id @default(cuid())
+  cartId String
+  cart Cart @relation(fields:[cartId],references:[id],onDelete:Cascade)
+  variantId String
+  revisionId String
+  quantity Int
+}
+model Quote {
+  id String @id @default(cuid())
+  cartId String
+  cartVersion Int
+  principal String
+  inputHash String
+  snapshot Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+model Attempt {
+  id String @id @default(cuid())
+  cartId String
+  cartVersion Int
+  quoteId String
+  principal String
+  key String
+  requestHash String
+  providerRef String @unique
+  status String @default("pending")
+  amount Int
+  scenario String @default("success")
+  orderId String?
+  createdAt DateTime @default(now())
+  @@unique([principal,key])
+  @@index([status])
+}
+model Reservation {
+  id String @id @default(cuid())
+  attemptId String
+  variantId String
+  quantity Int
+  state String @default("reserved")
+  expiresAt DateTime
+  @@unique([attemptId,variantId])
+}
+model CapacityEffect {
+  id String @id @default(cuid())
+  effectKey String @unique
+  variantId String
+  delta Int
+  reason String
+  createdAt DateTime @default(now())
+}
+model Order {
+  id String @id @default(cuid())
+  ref String @unique
+  principal String
+  email String
+  cartId String
+  cartVersion Int
+  attemptId String @unique
+  address Json
+  addressVersion Int @default(1)
+  snapshot Json
+  subtotal Int
+  discount Int
+  tax Int
+  shipping Int
+  total Int
+  paidAt DateTime @default(now())
+  source String @default("demo")
+  attribution Json @default("{}")
+  lines OrderLine[]
+  shipments Shipment[]
+  refunds Refund[]
+  @@unique([cartId,cartVersion])
+  @@index([principal,paidAt])
+}
+model OrderLine {
+  id String @id @default(cuid())
+  orderId String
+  order Order @relation(fields:[orderId],references:[id],onDelete:Restrict)
+  variantId String
+  revisionId String
+  quantity Int
+  snapshot Json
+  net Int
+  tax Int
+  unitSlices Json
+  canceled Int @default(0)
+  locked Int @default(0)
+  held Int @default(0)
+  state String @default("awaiting_design")
+  assignedTo String?
+  workDraft Json?
+  minutes Int?
+  deadline DateTime
+  originalShipDate DateTime
+  changesUsed Int @default(0)
+  proofs Proof[]
+  runs ProductionRun[]
+  @@index([state])
+}
+model Proof {
+  id String @id @default(cuid())
+  lineId String
+  line OrderLine @relation(fields:[lineId],references:[id],onDelete:Restrict)
+  version Int
+  revisionId String
+  state String @default("awaiting_review")
+  previewId String
+  productionId String
+  manifest Json
+  manifestHash String
+  previewSha String
+  productionSha String
+  feedback String?
+  approvedAt DateTime?
+  approvedBy String?
+  createdAt DateTime @default(now())
+  @@unique([lineId,version])
+}
+model ProductionRun {
+  id String @id @default(cuid())
+  lineId String
+  line OrderLine @relation(fields:[lineId],references:[id],onDelete:Restrict)
+  releaseNo Int
+  proofId String
+  manifestHash String
+  externalRef String @unique
+  kind String @default("original")
+  parentId String?
+  reason String
+  quantity Int
+  units Json
+  cost Int
+  acceptedAt DateTime?
+  state String @default("submitting")
+  scenario String @default("success")
+  createdAt DateTime @default(now())
+  @@unique([lineId,releaseNo])
+}
+model Shipment {
+  id String @id @default(cuid())
+  ref String @unique
+  orderId String
+  order Order @relation(fields:[orderId],references:[id],onDelete:Restrict)
+  state String @default("label_created")
+  method String
+  cost Int
+  address Json
+  events Json @default("[]")
+  createdAt DateTime @default(now())
+  items ShipmentItem[]
+}
+model ShipmentItem {
+  id String @id @default(cuid())
+  shipmentId String
+  shipment Shipment @relation(fields:[shipmentId],references:[id],onDelete:Restrict)
+  runId String
+  lineId String
+  quantity Int
+  costAllocation Int @default(0)
+  @@unique([shipmentId,runId])
+}
+model Refund {
+  id String @id @default(cuid())
+  ref String @unique
+  orderId String
+  order Order @relation(fields:[orderId],references:[id],onDelete:Restrict)
+  key String @unique
+  requestHash String
+  reason String
+  amount Int
+  status String @default("pending")
+  scenario String @default("success")
+  createdAt DateTime @default(now())
+  succeededAt DateTime?
+  allocations RefundAllocation[]
+}
+model RefundAllocation {
+  id String @id @default(cuid())
+  refundId String
+  refund Refund @relation(fields:[refundId],references:[id],onDelete:Restrict)
+  lineId String
+  units Json
+  quantity Int
+  net Int
+  tax Int
+  shipping Int
+}
+model SimReceipt {
+  id String @id @default(cuid())
+  reference String @unique
+  type String
+  amount Int @default(0)
+  state String
+  payload Json
+  createdAt DateTime @default(now())
+}
+model Job {
+  id String @id @default(cuid())
+  effectKey String @unique
+  kind String
+  payload Json
+  state String @default("pending")
+  attempts Int @default(0)
+  nextRunAt DateTime @default(now())
+  leaseUntil DateTime?
+  leaseId String?
+  error String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([state,nextRunAt])
+}
+model Notification {
+  id String @id @default(cuid())
+  key String @unique
+  to String
+  subject String
+  html String
+  messageId String @unique
+  state String @default("pending")
+  sentAt DateTime?
+  createdAt DateTime @default(now())
+}
+model Event {
+  id String @id @default(cuid())
+  eventId String @unique
+  kind String
+  actor String
+  objectId String?
+  source String @default("demo")
+  data Json @default("{}")
+  createdAt DateTime @default(now())
+  @@index([kind,createdAt])
+  @@index([objectId])
+}
+model Ticket {
+  id String @id @default(cuid())
+  ref String @unique
+  principal String
+  email String
+  orderId String?
+  lineId String?
+  kind String @default("contact")
+  subject String
+  messages Json
+  state String @default("open")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Setting {
+  key String @id
+  value Json
+  updatedAt DateTime @updatedAt
+}
+model Heartbeat {
+  id String @id
+  state String
+  at DateTime @default(now())
+}
+model Alert {
+  id String @id @default(cuid())
+  fingerprint String
+  message String
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  @@index([fingerprint,resolvedAt])
+}
+model RequestMetric {
+  id String @id @default(cuid())
+  route String
+  status Int
+  duration Int
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}
+
+model RateLimit {
+  id String @id
+  count Int
+  resetsAt DateTime
+}

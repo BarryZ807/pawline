@@ -1,0 +1,10 @@
+services:
+  web:
+    ports: !reset []
+  mailpit:
+    ports: !reset []
+  db-ui:
+    ports: !reset []
+networks:
+  local:
+    internal: true

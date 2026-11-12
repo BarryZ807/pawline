@@ -1,0 +1,14 @@
+import { db } from "../src/infra/db";
+import { attempt, capture } from "../src/domain/checkout";
+import { settleRefund } from "../src/domain/refunds";
+import { submitFactory } from "../src/domain/fulfillment";
+import { deliver } from "../src/domain/mail";
+let input = "";
+for await (const chunk of process.stdin) input += chunk;
+const p = JSON.parse(input);
+if (p.action === "attempt") await attempt(p.auth, p.quoteId, p.key, p.version);
+else if (p.action === "capture") await capture(p.id, {}, "test");
+else if (p.action === "refund") await settleRefund(p.id);
+else if (p.action === "email") await deliver(p.id);
+else if (p.action === "factory") await submitFactory(p.id);
+await db.$disconnect();

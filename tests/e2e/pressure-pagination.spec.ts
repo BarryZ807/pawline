@@ -1,0 +1,33 @@
+import {test,expect} from '@playwright/test';
+import {staffLogin,request,evidence} from './helpers';
+
+test('H09 real pressure orders remain searchable, paginated, and editable after 100 jobs',async({page})=>{
+ test.setTimeout(90000);
+ await staffLogin(page);
+ await page.goto('/admin/orders');
+ await expect(page.locator('tbody tr')).toHaveCount(50);
+ await expect(page.getByText('Page 1 of 3 · 120 orders')).toBeVisible();
+ await page.getByRole('button',{name:'Next orders'}).click();
+ await expect(page.getByText('Page 2 of 3 · 120 orders')).toBeVisible();
+ await page.getByRole('button',{name:'Next orders'}).click();
+ await expect(page.locator('tbody tr')).toHaveCount(20);
+ const reference=await page.locator('tbody tr').last().locator('a').innerText();
+ await page.getByRole('button',{name:'Previous orders'}).click();
+ await expect(page.locator('tbody tr')).toHaveCount(50);
+ await page.getByLabel('Find an order').fill(reference.trim());
+ await expect(page.locator('tbody tr')).toHaveCount(1);
+ await page.locator('tbody tr a').click();
+ await expect(page).toHaveURL(new RegExp('/admin/orders/'+reference.trim()));
+ await page.goto('/studio');
+ await expect(page.locator('.job-card')).toHaveCount(100);
+ await page.getByRole('button',{name:'Next jobs'}).click();
+ await expect(page.locator('.job-card')).toHaveCount(20);
+ const last=page.locator('.job-card').last();const href=await last.getAttribute('href');
+ await last.click();await expect(page.getByRole('button',{name:'Claim this design'})).toBeVisible();
+ await page.reload();await expect(page.getByRole('button',{name:'Claim this design'})).toBeVisible();
+ const job=(await request(page,'studio/jobs/'+href!.split('/').pop())).data;
+ const image=await page.request.get('/api/media/'+job.revision.previewId);expect(image.status()).toBe(200);
+ await page.screenshot({path:evidence+'/late-design-job.png',fullPage:true});
+ await page.goto('/studio');await page.getByRole('button',{name:'Next jobs'}).click();
+ await page.getByRole('button',{name:'Previous jobs'}).click();await expect(page.locator('.job-card')).toHaveCount(100);
+});

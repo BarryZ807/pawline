@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env
+.local/
+artifacts/private/
+test-results/
+playwright-report/
+*.log
+.DS_Store

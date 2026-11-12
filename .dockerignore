@@ -1,0 +1,7 @@
+node_modules
+.next
+.local
+.env
+artifacts
+.git
+test-results

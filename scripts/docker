@@ -1,0 +1,37 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+# Removing volumes must never rely on the current directory's implicit .env.
+# The ordinary stop/start commands retain their existing behavior.
+if [ "${1:-}" = compose ]; then
+  HAS_DOWN=0; HAS_VOLUMES=0; HAS_ENV=0; HAS_PROJECT=0; HAS_FILE=0
+  for ARG in "$@"; do
+    case "$ARG" in
+      down) HAS_DOWN=1 ;;
+      --volumes|-v) HAS_VOLUMES=1 ;;
+      --env-file|--env-file=*) HAS_ENV=1 ;;
+      -p|--project-name|--project-name=*) HAS_PROJECT=1 ;;
+      -f|--file|--file=*) HAS_FILE=1 ;;
+    esac
+  done
+  if [ "$HAS_DOWN$HAS_VOLUMES" = 11 ] && [ "$HAS_ENV$HAS_PROJECT$HAS_FILE" != 111 ]; then
+    echo 'Refused: deleting Compose volumes requires explicit -f FILE, --env-file FILE and -p PROJECT. For an ordinary shutdown use down without --volumes; it preserves data.' >&2
+    exit 64
+  fi
+fi
+if [ -x "$ROOT/.local/tools/colima" ]; then
+  SHORT="${PAWLINE_RUNTIME_ROOT:-$HOME/.cache/pawline/.pwl-$(printf %s "$ROOT" | shasum | cut -c 1-6)}"
+  mkdir -p "$SHORT"
+  export PATH="$ROOT/.local/tools:$ROOT/.local/tools/bin:$ROOT/.local/tools/docker:$PATH"
+  export COLIMA_HOME="$SHORT/colima" LIMA_HOME="$SHORT/lima" DOCKER_CONFIG="$ROOT/.local/docker-config"
+  unset DOCKER_HOST
+  export DOCKER_CONTEXT=colima-pawline
+  if [ "${1:-}" = "engine-start" ]; then
+    unset DOCKER_HOST
+    # Keep an existing VM's saved capacity and settings; never request a shrink.
+    if [ -f "$LIMA_HOME/colima-pawline/lima.yaml" ]; then exec "$ROOT/.local/tools/colima" start pawline; fi
+    exec "$ROOT/.local/tools/colima" start pawline --vm-type vz --cpu 2 --memory 4 --disk 64 --mount "$ROOT:w"
+  fi
+  exec "$ROOT/.local/tools/docker/docker" "$@"
+fi
+exec docker "$@"

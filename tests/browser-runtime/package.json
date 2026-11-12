@@ -1,0 +1,10 @@
+{
+  "name": "pawline-browser-verification",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.58.2",
+    "sharp": "0.35.5"
+  }
+}
