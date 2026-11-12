@@ -101,5 +101,5 @@ scripts/docker cp "$(dc ps -q web):/tmp/pawline-stress.json" "$REPORT/pressure.j
 dc exec -T db psql -U pawline -d pawline -c 'SELECT type,state,count(*),sum(amount) FROM "SimReceipt" GROUP BY type,state; SELECT count(*),sum(total) FROM "Order"; SELECT sum(allocated),sum(reserved) FROM "Variant";' > "$REPORT/pressure-independent-sql.txt"
 browser pressure_ui tests/e2e/pressure-pagination.spec.ts > "$REPORT/pressure-ui.log" 2>&1
 sh scripts/check-service-restart.sh "$ENVFILE" "$REPORT" > "$REPORT/automatic-restart.log" 2>&1
-printf '本次执行的全部验收阶段通过。请查看逐项报告与本机私有 trace；覆盖范围见 docs/verification-scope.md。\n' > "$REPORT/结果.txt"
+printf 'Every verification stage in this run passed. See the per-stage reports and the private local trace.\n' > "$REPORT/result.txt"
 printf '%s\n' "$REPORT" > .local/latest-verification
