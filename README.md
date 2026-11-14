@@ -2,6 +2,8 @@
 
 A custom pet-portrait gift store, built end to end as a pre-launch brand concept. This repository is an excerpt of that build: the data model, the business rules, the tests and the verification tooling.
 
+The case study, with the design decisions and the verification results, is at [barryzehuizhang.com/work/pawline](https://barryzehuizhang.com/work/pawline/).
+
 A customer uploads a pet photo, places it on a product and orders it. A designer turns the photo into a proof, the customer approves or asks for changes, and the owner releases the approved design to production and tracks it to delivery. The store carries that whole loop.
 
 > **Status.** Pawline is my own concept and has not launched. Payments, the factory and shipping are local simulated ledgers, and prices and tax are demo values. Everything else ran for real in the full build: the web app, PostgreSQL, image upload and rendering, sign-in, proof approval, line-level refunds, background jobs, email and monitoring.
